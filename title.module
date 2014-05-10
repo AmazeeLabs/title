@@ -376,8 +376,11 @@ function title_entity_sync($entity_type, &$entity, $langcode = NULL, $set = FALS
   list($id, , $bundle) = entity_extract_ids($entity_type, $entity);
   $langcode = field_valid_language($langcode, FALSE);
 
-  // We do not need to perform this more than once.
-  if (!empty($id) && !empty($sync[$entity_type][$id][$langcode][$set])) {
+  $entity_info = entity_get_info($entity_type);
+
+  // We do not need to perform this more than once when static caching is not
+  // enabled for this entity type.
+  if (!empty($id) && !empty($sync[$entity_type][$id][$langcode][$set]) && $entity_info['static cache']) {
     return;
   }
 
