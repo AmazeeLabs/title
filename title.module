@@ -986,8 +986,16 @@ function title_field_info_alter(&$info) {
  * Return taxonomy term values for taxonomy reference fields.
  */
 function title_taxonomy_allowed_values($field) {
+
+  // Since we call taxonomy_get_tree() with $load_entities = TRUE, there is a
+  // chance that this will trigger theme functions. For this case, we need to
+  // ensure that we are not in the process of theme registry rebuilding.
+  $theme_registry_cache = drupal_static('theme_get_registry');
+  /* @see theme_get_registry() */
+  $theme_registry_is_rebuilding = is_array($theme_registry_cache) && empty($theme_registry_cache);
+
   $bundle = !empty($field['settings']['allowed_values'][0]['vocabulary']) ? $field['settings']['allowed_values'][0]['vocabulary'] : NULL;
-  if ($bundle && ($label = title_field_replacement_get_label_field('taxonomy_term', $bundle))) {
+  if ($bundle && ($label = title_field_replacement_get_label_field('taxonomy_term', $bundle)) && !$theme_registry_is_rebuilding) {
     $options = array();
     foreach ($field['settings']['allowed_values'] as $tree) {
       $vocabulary = taxonomy_vocabulary_machine_name_load($tree['vocabulary']);
