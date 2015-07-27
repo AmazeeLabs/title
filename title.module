@@ -566,7 +566,7 @@ function title_active_language($langcode = NULL) {
 function title_entity_language($entity_type, $entity) {
   if (module_exists('entity_translation') && entity_translation_enabled($entity_type)) {
     $handler = entity_translation_get_handler($entity_type, $entity, TRUE);
-    $langcode = $handler->getLanguage();
+    $langcode = $handler->getFormLanguage();
   }
   else {
     $langcode = entity_language($entity_type, $entity);
