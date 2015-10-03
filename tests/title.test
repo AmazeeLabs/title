@@ -401,8 +401,11 @@ class TitleTranslationTestCase extends DrupalWebTestCase {
       'description' => $this->randomName(),
     );
     $edit = $this->editValues($translated_values, $translation_langcode);
+    // Additionally, we test that everything works even if interface/content
+    // language is different from the translation language, for example, at
+    // en/taxonomy/term/123/edit/it path.
     $this->drupalPost('taxonomy/term/' . $term->tid . '/edit/' . $translation_langcode, $edit, t('Save'), array(
-      'language' => $languages[$translation_langcode],
+      'language' => $languages[$langcode],
     ));
     $term = $this->termLoad($term->tid);
     $this->assertTrue($this->checkFieldValues($term, $translated_values, $translation_langcode, FALSE), t('Taxonomy term translation updated.'));
