@@ -358,6 +358,7 @@ class TitleTranslationTestCase extends DrupalWebTestCase {
    * Tests taxonomy form translation workflow.
    */
   public function testFormTranslationWorkflow() {
+    $languages = language_list();
     // Create a taxonomy term and check that legacy fields are properly
     // populated.
     $original_values = array(
@@ -378,7 +379,9 @@ class TitleTranslationTestCase extends DrupalWebTestCase {
     );
     $translation_langcode = 'it';
     $edit = $this->editValues($translated_values, 'it');
-    $this->drupalPost($translation_langcode . '/taxonomy/term/' . $term->tid . '/edit/add/' . $langcode . '/' . $translation_langcode, $edit, t('Save'));
+    $this->drupalPost('taxonomy/term/' . $term->tid . '/edit/add/' . $langcode . '/' . $translation_langcode, $edit, t('Save'), array(
+      'language' => $languages[$translation_langcode],
+    ));
     $term = $this->termLoad($term->tid);
     $this->assertTrue($this->checkFieldValues($term, $translated_values, $translation_langcode, FALSE), t('Taxonomy term translation created.'));
     $this->assertTrue($this->checkFieldValues($term, $original_values, $langcode), t('Taxonomy term original values preserved.'));
@@ -394,7 +397,9 @@ class TitleTranslationTestCase extends DrupalWebTestCase {
       'description' => $this->randomName(),
     );
     $edit = $this->editValues($translated_values, $translation_langcode);
-    $this->drupalPost($translation_langcode . '/taxonomy/term/' . $term->tid . '/edit/' . $translation_langcode, $edit, t('Save'));
+    $this->drupalPost('taxonomy/term/' . $term->tid . '/edit/' . $translation_langcode, $edit, t('Save'), array(
+      'language' => $languages[$translation_langcode],
+    ));
     $term = $this->termLoad($term->tid);
     $this->assertTrue($this->checkFieldValues($term, $translated_values, $translation_langcode, FALSE), t('Taxonomy term translation updated.'));
     $this->assertTrue($this->checkFieldValues($term, $original_values, $langcode), t('Taxonomy term original values preserved.'));
