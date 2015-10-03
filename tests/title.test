@@ -304,6 +304,7 @@ class TitleTranslationTestCase extends DrupalWebTestCase {
       'changed' => REQUEST_TIME,
     );
     entity_translation_get_handler('taxonomy_term', $term)->setTranslation($translation);
+    entity_translation_get_handler('taxonomy_term', $term)->setFormLanguage($translation_langcode);
     taxonomy_term_save($term);
     $this->assertTrue($this->checkLegacyValues($term, $original_values), 'Legacy field values correctly stored.');
     $term = $this->termLoad($term->tid, $translation_langcode);
@@ -312,6 +313,7 @@ class TitleTranslationTestCase extends DrupalWebTestCase {
 
     // Delete the translation.
     entity_translation_get_handler('taxonomy_term', $term)->removeTranslation($translation_langcode);
+    entity_translation_get_handler('taxonomy_term', $term)->setFormLanguage($translation_langcode);
     taxonomy_term_save($term);
     $this->assertTrue($this->checkLegacyValues($term, $original_values), 'Legacy field values correctly stored.');
     $term = $this->termLoad($term->tid, $langcode);
@@ -319,6 +321,7 @@ class TitleTranslationTestCase extends DrupalWebTestCase {
 
     // Make the term language neutral.
     entity_translation_get_handler('taxonomy_term', $term)->setOriginalLanguage(LANGUAGE_NONE);
+    entity_translation_get_handler('taxonomy_term', $term)->setFormLanguage($translation_langcode);
     foreach ($original_values as $name => $value) {
       $field_name = $name . '_field';
       $term->{$field_name}[LANGUAGE_NONE] = $term->{$field_name}[$langcode];
@@ -330,6 +333,7 @@ class TitleTranslationTestCase extends DrupalWebTestCase {
     $this->assertTrue($this->checkFieldValues($term, $original_values, LANGUAGE_NONE), 'Term original language correctly changed to the former translation language.');
 
     // Change the term language to the former translation language.
+    entity_translation_get_handler('taxonomy_term', $term)->setFormLanguage($translation_langcode);
     entity_translation_get_handler('taxonomy_term', $term)->setOriginalLanguage($translation_langcode);
     foreach ($original_values as $name => $value) {
       $field_name = $name . '_field';
