@@ -544,6 +544,15 @@ function title_field_sync_set($entity_type, $entity, $legacy_field, $info, $lang
 function title_active_language($entity_type, $entity) {
   if ($handler = module_invoke('entity_translation', 'get_handler', $entity_type, $entity)) {
     $form_language = $handler->getFormLanguage();
+    if ($form_language == $handler->getLanguage() && $form_language != $GLOBALS['language_content']->language) {
+      // If form language is the same as entity original language, but differs
+      // from current content language, we assume that entity was loaded for the
+      // "view" purpose, so we return the content language.
+      // This is a bit ugly check, but there is no other way because
+      /* @see EntityTranslationDefaultHandler::getFormLanguage() */
+      // automatically falls back to the entity "source" language.
+      return $GLOBALS['language_content']->language;
+    }
     return $form_language;
   }
   return $GLOBALS['language_content']->language;
