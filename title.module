@@ -150,7 +150,7 @@ function title_entity_presave($entity, $entity_type) {
   // need to synchronize the legacy field values into the replacing field
   // translations in the active language.
   if (module_invoke('entity_translation', 'enabled', $entity_type)) {
-    $langcode = title_active_language();
+    $langcode = title_active_language($entity_type, $entity);
     $translations = entity_translation_get_handler($entity_type, $entity)->getTranslations();
     // If we are removing a translation for the active language we need to skip
     // reverse synchronization, as we would store empty values in the original
@@ -425,7 +425,7 @@ function title_entity_sync($entity_type, &$entity, $langcode = NULL, $set = FALS
   list($id, , $bundle) = entity_extract_ids($entity_type, $entity);
 
   if (!isset($langcode)) {
-    $langcode = $set ? title_entity_language($entity_type, $entity) : title_active_language();
+    $langcode = $set ? title_entity_language($entity_type, $entity) : title_active_language($entity_type, $entity);
   }
 
   // We do not need to perform synchronization more than once.
@@ -527,28 +527,26 @@ function title_field_sync_set($entity_type, $entity, $legacy_field, $info, $lang
 }
 
 /**
- * Returns and optionally stores the active language.
+ * Returns the entity active language.
  *
- * @param string $langcode
- *   (optional) The active language to be set. If none is provided the active
- *   language is just returned.
+ * The resulting value depends on the translation workflow:
+ *   - if entity translation is used, it's form language or content language,
+ *   - if content translation is used, it's current content language.
+ *
+ * @param string $entity_type
+ *   The entity type.
+ * @param object $entity
+ *   The entity object.
  *
  * @return string
- *   The active language code. Defaults to the current content language.
+ *   The language code.
  */
-function title_active_language($langcode = NULL) {
-  static $drupal_static_fast;
-  if (!isset($drupal_static_fast)) {
-    $drupal_static_fast['active_language'] = &drupal_static(__FUNCTION__);
+function title_active_language($entity_type, $entity) {
+  if ($handler = module_invoke('entity_translation', 'get_handler', $entity_type, $entity)) {
+    $form_language = $handler->getFormLanguage();
+    return $form_language;
   }
-  $active_langcode = &$drupal_static_fast['active_language'];
-  if (isset($langcode)) {
-    $active_langcode = $langcode;
-  }
-  if (empty($active_langcode)) {
-    $active_langcode = $GLOBALS['language_content']->language;
-  }
-  return $active_langcode;
+  return $GLOBALS['language_content']->language;
 }
 
 /**

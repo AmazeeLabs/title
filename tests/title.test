@@ -421,8 +421,24 @@ class TitleTranslationTestCase extends DrupalWebTestCase {
    */
   protected function termLoad($tid, $langcode = NULL) {
     drupal_static_reset();
-    title_active_language($langcode);
-    return current(entity_load('taxonomy_term', array($tid), array(), TRUE));
+    // If langcode is passed, we temporary replace global languages with the
+    // desired one.
+    $original_languages = array();
+    if ($langcode !== NULL) {
+      $languages = language_list();
+      foreach (drupal_language_types() as $language_type => $_) {
+        $original_languages[$language_type] = $GLOBALS[$language_type];
+        $GLOBALS[$language_type] = $languages[$langcode];
+      }
+    }
+    $term = current(entity_load('taxonomy_term', array($tid), array(), TRUE));
+    // Restore original languages.
+    if (!empty($original_languages)) {
+      foreach (drupal_language_types() as $language_type => $_) {
+        $GLOBALS[$language_type] = $original_languages[$language_type];
+      }
+    }
+    return $term;
   }
 
   /**
