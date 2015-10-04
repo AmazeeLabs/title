@@ -420,6 +420,21 @@ class TitleTranslationTestCase extends DrupalWebTestCase {
     // Check that legacy fields have the correct values.
     $this->assertEqual($term->name, $original_values['name'], t('Taxonomy term name correctly stored.'));
     $this->assertEqual($term->description, $original_values['description'], t('Taxonomy term description correctly stored.'));
+
+    // Now test if the original language translation can be edited if
+    // interface/content is different, for example, at
+    // en/taxonomy/term/123/edit/it path.
+    $new_original_values = array(
+      'name' => $this->randomName(),
+      'description' => $this->randomName(),
+    );
+    $edit = $this->editValues($new_original_values, $langcode);
+    $this->drupalPost('taxonomy/term/' . $term->tid . '/edit/' . $langcode, $edit, t('Save'), array(
+      'language' => $languages[$translation_langcode],
+    ));
+    $term = $this->termLoad($term->tid, $langcode);
+    $this->assertTrue($this->checkFieldValues($term, $new_original_values, $langcode), t('Taxonomy term source updated.'));
+    $this->assertTrue($this->checkFieldValues($term, $translated_values, $translation_langcode, FALSE), t('Taxonomy term translation values preserved.'));
   }
 
   /**
@@ -444,6 +459,9 @@ class TitleTranslationTestCase extends DrupalWebTestCase {
         $GLOBALS[$language_type] = $original_languages[$language_type];
       }
     }
+    // Clear static caches again since they may now have some language related
+    // data.
+    drupal_static_reset();
     return $term;
   }
 
