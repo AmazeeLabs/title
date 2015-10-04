@@ -150,8 +150,9 @@ function title_entity_presave($entity, $entity_type) {
   // need to synchronize the legacy field values into the replacing field
   // translations in the active language.
   if (module_invoke('entity_translation', 'enabled', $entity_type)) {
-    $langcode = title_active_language($entity_type, $entity);
-    $translations = entity_translation_get_handler($entity_type, $entity)->getTranslations();
+    $handler = entity_translation_get_handler($entity_type, $entity);
+    $langcode = $handler->getFormLanguage();
+    $translations = $handler->getTranslations();
     // If we are removing a translation for the active language we need to skip
     // reverse synchronization, as we would store empty values in the original
     // replacing fields immediately afterwards.
@@ -425,7 +426,7 @@ function title_entity_sync($entity_type, &$entity, $langcode = NULL, $set = FALS
   list($id, , $bundle) = entity_extract_ids($entity_type, $entity);
 
   if (!isset($langcode)) {
-    $langcode = $set ? title_entity_language($entity_type, $entity) : title_active_language($entity_type, $entity);
+    $langcode = $set ? title_entity_language($entity_type, $entity) : $GLOBALS['language_content']->language;
   }
 
   // We do not need to perform synchronization more than once.
@@ -524,38 +525,6 @@ function title_field_sync_set($entity_type, $entity, $legacy_field, $info, $lang
     $langcode = field_is_translatable($entity_type, $field) ? $langcode : LANGUAGE_NONE;
     $info['callbacks']['sync_set']($entity_type, $entity, $legacy_field, $info, $langcode);
   }
-}
-
-/**
- * Returns the entity active language.
- *
- * The resulting value depends on the translation workflow:
- *   - if entity translation is used, it's form language or content language,
- *   - if content translation is used, it's current content language.
- *
- * @param string $entity_type
- *   The entity type.
- * @param object $entity
- *   The entity object.
- *
- * @return string
- *   The language code.
- */
-function title_active_language($entity_type, $entity) {
-  if ($handler = module_invoke('entity_translation', 'get_handler', $entity_type, $entity)) {
-    $form_language = $handler->getFormLanguage();
-    if ($form_language == $handler->getLanguage() && $form_language != $GLOBALS['language_content']->language) {
-      // If form language is the same as entity original language, but differs
-      // from current content language, we assume that entity was loaded for the
-      // "view" purpose, so we return the content language.
-      // This is a bit ugly check, but there is no other way because
-      /* @see EntityTranslationDefaultHandler::getFormLanguage() */
-      // automatically falls back to the entity "source" language.
-      return $GLOBALS['language_content']->language;
-    }
-    return $form_language;
-  }
-  return $GLOBALS['language_content']->language;
 }
 
 /**
