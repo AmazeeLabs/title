@@ -150,8 +150,9 @@ function title_entity_presave($entity, $entity_type) {
   // need to synchronize the legacy field values into the replacing field
   // translations in the active language.
   if (module_invoke('entity_translation', 'enabled', $entity_type)) {
-    $langcode = title_active_language();
-    $translations = entity_translation_get_handler($entity_type, $entity)->getTranslations();
+    $handler = entity_translation_get_handler($entity_type, $entity);
+    $langcode = $handler->getFormLanguage();
+    $translations = $handler->getTranslations();
     // If we are removing a translation for the active language we need to skip
     // reverse synchronization, as we would store empty values in the original
     // replacing fields immediately afterwards.
@@ -425,7 +426,7 @@ function title_entity_sync($entity_type, &$entity, $langcode = NULL, $set = FALS
   list($id, , $bundle) = entity_extract_ids($entity_type, $entity);
 
   if (!isset($langcode)) {
-    $langcode = $set ? title_entity_language($entity_type, $entity) : title_active_language();
+    $langcode = $set ? title_entity_language($entity_type, $entity) : $GLOBALS['language_content']->language;
   }
 
   // We do not need to perform synchronization more than once.
@@ -524,31 +525,6 @@ function title_field_sync_set($entity_type, $entity, $legacy_field, $info, $lang
     $langcode = field_is_translatable($entity_type, $field) ? $langcode : LANGUAGE_NONE;
     $info['callbacks']['sync_set']($entity_type, $entity, $legacy_field, $info, $langcode);
   }
-}
-
-/**
- * Returns and optionally stores the active language.
- *
- * @param string $langcode
- *   (optional) The active language to be set. If none is provided the active
- *   language is just returned.
- *
- * @return string
- *   The active language code. Defaults to the current content language.
- */
-function title_active_language($langcode = NULL) {
-  static $drupal_static_fast;
-  if (!isset($drupal_static_fast)) {
-    $drupal_static_fast['active_language'] = &drupal_static(__FUNCTION__);
-  }
-  $active_langcode = &$drupal_static_fast['active_language'];
-  if (isset($langcode)) {
-    $active_langcode = $langcode;
-  }
-  if (empty($active_langcode)) {
-    $active_langcode = $GLOBALS['language_content']->language;
-  }
-  return $active_langcode;
 }
 
 /**

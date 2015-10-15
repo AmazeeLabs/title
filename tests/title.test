@@ -304,6 +304,7 @@ class TitleTranslationTestCase extends DrupalWebTestCase {
       'changed' => REQUEST_TIME,
     );
     entity_translation_get_handler('taxonomy_term', $term)->setTranslation($translation);
+    entity_translation_get_handler('taxonomy_term', $term)->setFormLanguage($translation_langcode);
     taxonomy_term_save($term);
     $this->assertTrue($this->checkLegacyValues($term, $original_values), 'Legacy field values correctly stored.');
     $term = $this->termLoad($term->tid, $translation_langcode);
@@ -312,6 +313,7 @@ class TitleTranslationTestCase extends DrupalWebTestCase {
 
     // Delete the translation.
     entity_translation_get_handler('taxonomy_term', $term)->removeTranslation($translation_langcode);
+    entity_translation_get_handler('taxonomy_term', $term)->setFormLanguage($translation_langcode);
     taxonomy_term_save($term);
     $this->assertTrue($this->checkLegacyValues($term, $original_values), 'Legacy field values correctly stored.');
     $term = $this->termLoad($term->tid, $langcode);
@@ -319,6 +321,7 @@ class TitleTranslationTestCase extends DrupalWebTestCase {
 
     // Make the term language neutral.
     entity_translation_get_handler('taxonomy_term', $term)->setOriginalLanguage(LANGUAGE_NONE);
+    entity_translation_get_handler('taxonomy_term', $term)->setFormLanguage($translation_langcode);
     foreach ($original_values as $name => $value) {
       $field_name = $name . '_field';
       $term->{$field_name}[LANGUAGE_NONE] = $term->{$field_name}[$langcode];
@@ -330,6 +333,7 @@ class TitleTranslationTestCase extends DrupalWebTestCase {
     $this->assertTrue($this->checkFieldValues($term, $original_values, LANGUAGE_NONE), 'Term original language correctly changed to the former translation language.');
 
     // Change the term language to the former translation language.
+    entity_translation_get_handler('taxonomy_term', $term)->setFormLanguage($translation_langcode);
     entity_translation_get_handler('taxonomy_term', $term)->setOriginalLanguage($translation_langcode);
     foreach ($original_values as $name => $value) {
       $field_name = $name . '_field';
@@ -358,6 +362,7 @@ class TitleTranslationTestCase extends DrupalWebTestCase {
    * Tests taxonomy form translation workflow.
    */
   public function testFormTranslationWorkflow() {
+    $languages = language_list();
     // Create a taxonomy term and check that legacy fields are properly
     // populated.
     $original_values = array(
@@ -378,7 +383,9 @@ class TitleTranslationTestCase extends DrupalWebTestCase {
     );
     $translation_langcode = 'it';
     $edit = $this->editValues($translated_values, 'it');
-    $this->drupalPost($translation_langcode . '/taxonomy/term/' . $term->tid . '/edit/add/' . $langcode . '/' . $translation_langcode, $edit, t('Save'));
+    $this->drupalPost('taxonomy/term/' . $term->tid . '/edit/add/' . $langcode . '/' . $translation_langcode, $edit, t('Save'), array(
+      'language' => $languages[$translation_langcode],
+    ));
     $term = $this->termLoad($term->tid);
     $this->assertTrue($this->checkFieldValues($term, $translated_values, $translation_langcode, FALSE), t('Taxonomy term translation created.'));
     $this->assertTrue($this->checkFieldValues($term, $original_values, $langcode), t('Taxonomy term original values preserved.'));
@@ -387,6 +394,12 @@ class TitleTranslationTestCase extends DrupalWebTestCase {
     $this->assertEqual($term->name, $original_values['name'], t('Taxonomy term name correctly stored.'));
     $this->assertEqual($term->description, $original_values['description'], t('Taxonomy term description correctly stored.'));
 
+    // Check that legacy fields are properly synchronized on entity load.
+    $term = $this->termLoad($term->tid, $translation_langcode);
+    foreach ($translated_values as $name => $value) {
+      $this->assertEqual($term->{$name}, $value, t('Legacy field "@field" is properly synchronized when term is loaded in translation language.', array('@field' => $name)));
+    }
+
     // Updated the taxonomy term translation and check that both the original
     // values and the translations were correctly stored.
     $translated_values = array(
@@ -394,7 +407,12 @@ class TitleTranslationTestCase extends DrupalWebTestCase {
       'description' => $this->randomName(),
     );
     $edit = $this->editValues($translated_values, $translation_langcode);
-    $this->drupalPost($translation_langcode . '/taxonomy/term/' . $term->tid . '/edit/' . $translation_langcode, $edit, t('Save'));
+    // Additionally, we test that everything works even if interface/content
+    // language is different from the translation language, for example, at
+    // en/taxonomy/term/123/edit/it path.
+    $this->drupalPost('taxonomy/term/' . $term->tid . '/edit/' . $translation_langcode, $edit, t('Save'), array(
+      'language' => $languages[$langcode],
+    ));
     $term = $this->termLoad($term->tid);
     $this->assertTrue($this->checkFieldValues($term, $translated_values, $translation_langcode, FALSE), t('Taxonomy term translation updated.'));
     $this->assertTrue($this->checkFieldValues($term, $original_values, $langcode), t('Taxonomy term original values preserved.'));
@@ -402,6 +420,21 @@ class TitleTranslationTestCase extends DrupalWebTestCase {
     // Check that legacy fields have the correct values.
     $this->assertEqual($term->name, $original_values['name'], t('Taxonomy term name correctly stored.'));
     $this->assertEqual($term->description, $original_values['description'], t('Taxonomy term description correctly stored.'));
+
+    // Now test if the original language translation can be edited if
+    // interface/content is different, for example, at
+    // en/taxonomy/term/123/edit/it path.
+    $new_original_values = array(
+      'name' => $this->randomName(),
+      'description' => $this->randomName(),
+    );
+    $edit = $this->editValues($new_original_values, $langcode);
+    $this->drupalPost('taxonomy/term/' . $term->tid . '/edit/' . $langcode, $edit, t('Save'), array(
+      'language' => $languages[$translation_langcode],
+    ));
+    $term = $this->termLoad($term->tid, $langcode);
+    $this->assertTrue($this->checkFieldValues($term, $new_original_values, $langcode), t('Taxonomy term source updated.'));
+    $this->assertTrue($this->checkFieldValues($term, $translated_values, $translation_langcode, FALSE), t('Taxonomy term translation values preserved.'));
   }
 
   /**
@@ -409,8 +442,27 @@ class TitleTranslationTestCase extends DrupalWebTestCase {
    */
   protected function termLoad($tid, $langcode = NULL) {
     drupal_static_reset();
-    title_active_language($langcode);
-    return current(entity_load('taxonomy_term', array($tid), array(), TRUE));
+    // If langcode is passed, we temporary replace global languages with the
+    // desired one.
+    $original_languages = array();
+    if ($langcode !== NULL) {
+      $languages = language_list();
+      foreach (drupal_language_types() as $language_type => $_) {
+        $original_languages[$language_type] = $GLOBALS[$language_type];
+        $GLOBALS[$language_type] = $languages[$langcode];
+      }
+    }
+    $term = current(entity_load('taxonomy_term', array($tid), array(), TRUE));
+    // Restore original languages.
+    if (!empty($original_languages)) {
+      foreach (drupal_language_types() as $language_type => $_) {
+        $GLOBALS[$language_type] = $original_languages[$language_type];
+      }
+    }
+    // Clear static caches again since they may now have some language related
+    // data.
+    drupal_static_reset();
+    return $term;
   }
 
   /**
