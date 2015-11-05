@@ -161,12 +161,8 @@ function title_entity_presave($entity, $entity_type) {
     }
   }
 
-  // Perform reverse synchronization to retain any change in the legacy field
-  // values. We must avoid doing this twice as we might overwrite the already
-  // synchronized values, if we are updating an existing entity.
-  if ($langcode) {
-    title_entity_sync($entity_type, $entity, $langcode, TRUE);
-  }
+  // Previously there was a reverse synchronization. We don't do it now because
+  // we don't have cases when the legacy field can be updated advisedly.
 
   // If we are not dealing with the entity language, we need to synchronize the
   // original values into the legacy fields to ensure they are always stored in
