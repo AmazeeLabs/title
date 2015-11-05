@@ -14,7 +14,7 @@ A Drupal module forked from https://www.drupal.org/project/title 7.x-1.x branch 
 ## Behaviour rules
 
 - On entity load: set `$entity->legacy_field` from `$entity->regular_field[{current-content-langcode}][0]['value']` (so the `$entity->legacy_field` is displayed correctly on the page, etc)
-- On entity save: set `$entity->legacy_field` from `$entity->regular_field[{entity-original-language}][0]['value']` (so, the `$entity->legacy_field` is always comes from one language)
+- On entity save: set `$entity->legacy_field` from `$entity->regular_field[{entity-original-language}][0]['value']` (so, the `$entity->legacy_field` is stored in the database in the entity original language)
 
 ## Tests
 
