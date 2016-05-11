@@ -759,7 +759,22 @@ function title_tokens_alter(array &$replacements, array $context) {
       // the current working language, that is the entity language. Modules
       // using Title tokens in display contexts need to specify the current
       // display language.
-      $langcode = isset($options['language']) ? $options['language']->language : entity_language($entity_type, $entity);
+      // After applying the patch from https://www.drupal.org/node/1707156#comment-10238471
+      // to the entity_translation, we had the issue that if we use here the
+      // call to entity_language() we will have an infinite loop, because:
+      //  - entity_language() will call entity_translation_language()
+      //  - entity_translation_language() will call EntityTranslationHandlerFactory::getInstance()->getCurrentRevisionHandler()
+      //  - there will be a call to $handler->getCurrentEntityRevision() which
+      // will load the node again, and the file_entity_file_load() hook will
+      // call token_replace() which will call the title_tokens_alter() again.
+      // As a hotfix, we replace
+      //$langcode = isset($options['language']) ? $options['language']->language : entity_language($entity_type, $entity);
+      $langcode = isset($options['language']) ? $options['language']->language : $entity->language;
+      // As default, we use the the undefined language.
+      if (empty($langcode)) {
+        $langcode = LANGUAGE_NONE;
+      }
+      // End hotfix.
 
       if ($fr_info) {
         foreach ($fr_info as $legacy_field => $info) {
