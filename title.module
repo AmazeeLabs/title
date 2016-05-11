@@ -767,14 +767,11 @@ function title_tokens_alter(array &$replacements, array $context) {
       //  - there will be a call to $handler->getCurrentEntityRevision() which
       // will load the node again, and the file_entity_file_load() hook will
       // call token_replace() which will call the title_tokens_alter() again.
-      // As a hotfix, we replace
+      // As a hotfix, we replace the call to entity_language with the language
+      // property of the $entity, if it has. If not, we just use the undefined
+      // language.
       //$langcode = isset($options['language']) ? $options['language']->language : entity_language($entity_type, $entity);
-      $langcode = isset($options['language']) ? $options['language']->language : $entity->language;
-      // As default, we use the the undefined language.
-      if (empty($langcode)) {
-        $langcode = LANGUAGE_NONE;
-      }
-      // End hotfix.
+      $langcode = isset($options['language']) ? $options['language']->language : (!empty($entity->language) ? $entity->language : LANGUAGE_NONE);
 
       if ($fr_info) {
         foreach ($fr_info as $legacy_field => $info) {
