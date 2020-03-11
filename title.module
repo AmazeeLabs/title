@@ -650,6 +650,7 @@ function title_tokens_alter(array &$replacements, array $context) {
       $entity = $context['data'][$context['type']];
       list($id, $vid, $bundle) = entity_extract_ids($entity_type, $entity);
       $options = $context['options'];
+      $sanitize = !empty($options['sanitize']);
 
       $langcode = NULL;
       if (isset($options['language'])) {
@@ -666,7 +667,7 @@ function title_tokens_alter(array &$replacements, array $context) {
                 if (is_array($item)) {
                   $item = reset($item);
                 }
-                $replacements[$context['tokens'][$legacy_field]] = $item;
+                $replacements[$context['tokens'][$legacy_field]] = $sanitize ? check_plain($item) : $item;
               }
             }
           }
