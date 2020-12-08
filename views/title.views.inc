@@ -10,9 +10,11 @@ function title_field_views_data_alter(&$data) {
       foreach ($entity_info['field replacement'] as $replacement) {
         if (isset($replacement['field']['field_name'])) {
           $field = field_info_field($replacement['field']['field_name']);
-          $table = _field_sql_storage_tablename($field);
-          if (isset($data[$table][$field['field_name']])) {
+          if (!empty($field)) {
+            $table = _field_sql_storage_tablename($field);
+            if (isset($data[$table][$field['field_name']])) {
             $data[$table][$field['field_name']]['field']['handler'] = 'views_handler_title_field';
+            }
           }
         }
       }
